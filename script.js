@@ -2,94 +2,77 @@ let attendanceData = {};
 let processedFiles = 0;
 let totalFiles = 0;
 
-async function processExcelFile(file) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            try {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-                const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-                
-                const courseName = (jsonData[2] && jsonData[2][2]) || '';
-                if (!courseName) {
-                    console.warn(`No course name found in file: ${file.name}`);
-                    resolve({ courseName: null, data: {} });
-                    return;
-                }
-                
-                console.log(`Processing ${file.name} for course ${courseName}`);
-                const studentData = {};
-                
-                for (let i = 6; i < jsonData.length; i++) {
-                    const row = jsonData[i];
-                    if (row && row[1]) {
-                        const rollNo = String(row[1]).trim();
-                        studentData[rollNo] = {
-                            name: row[2] || '',
-                            courseName: courseName,
-                            section: row[3] || '',
-                            totalAbsent: Number(row[4]) || 0,
-                            totalPresent: Number(row[5]) || 0,
-                            sessions: row.slice(6).filter(x => x === 'P' || x === 'A')
-                        };
-                    }
-                }
-                
-                resolve({ courseName, data: studentData });
-            } catch (error) {
-                console.error(`Error processing file ${file.name}:`, error);
-                resolve({ courseName: null, data: {} });
+async function processExcelFile(data) {
+    try {
+        const workbook = XLSX.read(data, { type: 'array' });
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        
+        const courseName = (jsonData[2] && jsonData[2][2]) || '';
+        console.log('Processing course:', courseName);
+        
+        if (!courseName) {
+            throw new Error('Course name not found');
+        }
+        
+        const studentData = {};
+        for (let i = 6; i < jsonData.length; i++) {
+            const row = jsonData[i];
+            if (row && row[1]) {
+                const rollNo = String(row[1]).trim();
+                studentData[rollNo] = {
+                    name: row[2] || '',
+                    courseName: courseName,
+                    section: row[3] || '',
+                    totalAbsent: Number(row[4]) || 0,
+                    totalPresent: Number(row[5]) || 0,
+                    sessions: row.slice(6).filter(x => x === 'P' || x === 'A')
+                };
             }
-        };
-        reader.onerror = () => reject(new Error(`Failed to read file ${file.name}`));
-        reader.readAsArrayBuffer(file);
-    });
+        }
+        return { courseName, data: studentData };
+    } catch (error) {
+        console.error('Error processing Excel file:', error);
+        throw error;
+    }
 }
 
 async function fetchGitHubDirectory() {
-    const subjects = ['DT', 'FA-II', 'FIM', 'HRM', 'LAB', 'MR', 'SCM', 'SDM', 'SIP', 'SM-II'];
-    const baseUrl = 'https://raw.githubusercontent.com/iimindore/attendance-system/main/attendance-files';
-    let allFiles = [];
-    
+    const username = 'iimindore';
+    const repo = 'attendance-system';
+    const path = 'attendance-files';
+    const branch = 'main';
+
     try {
-        for (const subject of subjects) {
-            // For example: /DT/A.xlsx, /DT/B.xlsx, etc.
-            const sectionFiles = await getSectionFiles(baseUrl, subject);
-            allFiles = [...allFiles, ...sectionFiles];
-        }
+        // Get directory contents first
+        const response = await fetch(`https://api.github.com/repos/${username}/${repo}/contents/${path}?ref=${branch}`);
+        if (!response.ok) throw new Error('Failed to fetch directory');
         
+        const folders = await response.json();
+        let allFiles = [];
+
+        // Process each subject folder
+        for (const folder of folders) {
+            if (folder.type === 'dir') {
+                const filesResponse = await fetch(folder.url);
+                if (!filesResponse.ok) continue;
+                
+                const files = await filesResponse.json();
+                allFiles = [...allFiles, ...files.filter(f => 
+                    f.name.endsWith('.xlsx') || f.name.endsWith('.xls')
+                )];
+            }
+        }
+
         console.log(`Found ${allFiles.length} Excel files`);
         return allFiles;
     } catch (error) {
-        console.error('Error fetching files:', error);
+        console.error('Error fetching directory:', error);
         return [];
     }
 }
 
-async function getSectionFiles(baseUrl, subject) {
-    const files = [];
-    // Check each section file
-    const sections = subject === 'SDM' ? ['ABCD.xlsx'] : ['A.xlsx', 'B.xlsx', 'C.xlsx', 'D.xlsx', 'E.xlsx', 'F.xlsx', 'G.xlsx', 'H.xlsx'];
-    
-    for (const section of sections) {
-        const fileUrl = `${baseUrl}/${subject}/${section}`;
-        try {
-            const response = await fetch(fileUrl);
-            if (response.ok) {
-                files.push({
-                    name: section,
-                    path: subject,
-                    download_url: fileUrl
-                });
-            }
-        } catch (err) {
-            console.log(`File not found: ${subject}/${section}`);
-        }
-    }
-    return files;
-}
+
 
 async function loadAttendanceData() {
     try {
@@ -100,7 +83,7 @@ async function loadAttendanceData() {
         
         for (const file of files) {
             try {
-                console.log(`Processing: ${file.path}/${file.name}`);
+                console.log(`Processing: ${file.path}`);
                 const response = await fetch(file.download_url);
                 if (!response.ok) {
                     console.error(`Failed to fetch ${file.name}`);
@@ -117,14 +100,12 @@ async function loadAttendanceData() {
                         ...studentData
                     };
                 }
-                console.log(`Processed ${courseName}, found ${Object.keys(studentData).length} students`);
             } catch (err) {
                 console.error(`Error processing ${file.name}:`, err);
             }
         }
         
         console.log('Final processed courses:', Object.keys(attendanceData));
-        console.log('Total courses:', Object.keys(attendanceData).length);
         localStorage.setItem('attendanceData', JSON.stringify(attendanceData));
         
     } catch (error) {

@@ -1,18 +1,18 @@
 let attendanceData = {};
-let processedFiles = 0;
-let totalFiles = 0;
 
-async function processExcelFile(data) {
+async function processExcelFile(arrayBuffer, fileName) {
     try {
+        const data = new Uint8Array(arrayBuffer);
         const workbook = XLSX.read(data, { type: 'array' });
         const worksheet = workbook.Sheets[workbook.SheetNames[0]];
         const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
         
         const courseName = (jsonData[2] && jsonData[2][2]) || '';
-        console.log('Processing course:', courseName);
+        console.log('Processing:', fileName, 'Course:', courseName);
         
         if (!courseName) {
-            throw new Error('Course name not found');
+            console.warn('No course name found in:', fileName);
+            return { courseName: null, data: {} };
         }
         
         const studentData = {};
@@ -32,47 +32,62 @@ async function processExcelFile(data) {
         }
         return { courseName, data: studentData };
     } catch (error) {
-        console.error('Error processing Excel file:', error);
-        throw error;
+        console.error('Error processing file:', fileName, error);
+        return { courseName: null, data: {} };
     }
 }
 
 async function fetchGitHubDirectory() {
-    const username = 'iimindore';
-    const repo = 'attendance-system';
-    const path = 'attendance-files';
-    const branch = 'main';
+    const fileStructure = {
+        'DT': ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'].map(section => `DT (${section}) Attendance Sheet.xlsx`),
+        'FA-II': ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'].map(section => `FA-II (${section}) Attendance Sheet.xlsx`),
+        'FIM': [
+            'FIM-D (ABCD) Attendance Sheet.xlsx',
+            'FIM-D (EFGH) Attendance Sheet.xlsx',
+            'FIM-U (ABCD) Attendance Sheet.xlsx',
+            'FIM-U (EFGH) Attendance Sheet.xlsx'
+        ],
+        'HRM': ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'].map(section => `HRM (${section}) Attendance Sheet.xlsx`),
+        'LAB': ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'].map(section => `LAB (${section}) Attendance Sheet.xlsx`),
+        'MR': [
+            'MR-A (ABCD) Attendance Sheet.xlsx',
+            'MR-A (EFGH) Attendance Sheet.xlsx',
+            'MR-B (ABCD) Attendance Sheet.xlsx',
+            'MR-B (EFGH) Attendance Sheet.xlsx',
+            'MR-S (ABCD) Attendance Sheet.xlsx',
+            'MR-S (EFGH) Attendance Sheet.xlsx'
+        ],
+        'SCM': [
+            'SCM-H Attendance Sheet.xlsx',
+            'SCM-R (ABCD) Attendance.xlsx',
+            'SCM-R (EFGH) Attendance.xlsx'
+        ],
+        'SDM': [
+            'SDM-A (ABCD) Attendance Sheet.xlsx',
+            'SDM-A (EFGH) Attendance Sheet.xlsx',
+            'SDM-M (ABCD) Attendance Sheet.xlsx',
+            'SDM-M (EFGH) Attendance Sheet.xlsx'
+        ],
+        'SIP': ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'].map(section => `SIP (${section}) Attendance Sheet.xlsx`),
+        'SM-II': ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'].map(section => `SM-II (${section}) Attendance Sheet.xlsx`)
+    };
 
-    try {
-        // Get directory contents first
-        const response = await fetch(`https://api.github.com/repos/${username}/${repo}/contents/${path}?ref=${branch}`);
-        if (!response.ok) throw new Error('Failed to fetch directory');
-        
-        const folders = await response.json();
-        let allFiles = [];
+    const baseUrl = 'https://raw.githubusercontent.com/iimindore/attendance-system/main/attendance-files';
+    let allFiles = [];
 
-        // Process each subject folder
-        for (const folder of folders) {
-            if (folder.type === 'dir') {
-                const filesResponse = await fetch(folder.url);
-                if (!filesResponse.ok) continue;
-                
-                const files = await filesResponse.json();
-                allFiles = [...allFiles, ...files.filter(f => 
-                    f.name.endsWith('.xlsx') || f.name.endsWith('.xls')
-                )];
-            }
+    for (const [subject, files] of Object.entries(fileStructure)) {
+        for (const file of files) {
+            allFiles.push({
+                name: file,
+                path: subject,
+                download_url: `${baseUrl}/${subject}/${encodeURIComponent(file)}`
+            });
         }
-
-        console.log(`Found ${allFiles.length} Excel files`);
-        return allFiles;
-    } catch (error) {
-        console.error('Error fetching directory:', error);
-        return [];
     }
+
+    console.log(`Total files to process: ${allFiles.length}`);
+    return allFiles;
 }
-
-
 
 async function loadAttendanceData() {
     try {
@@ -81,31 +96,39 @@ async function loadAttendanceData() {
         console.log(`Found total ${files.length} Excel files`);
         attendanceData = {};
         
+        let processed = 0;
+        let failed = 0;
+        
         for (const file of files) {
             try {
-                console.log(`Processing: ${file.path}`);
+                console.log(`Processing (${processed + 1}/${files.length}): ${file.path}/${file.name}`);
                 const response = await fetch(file.download_url);
                 if (!response.ok) {
-                    console.error(`Failed to fetch ${file.name}`);
+                    console.error(`Failed to fetch: ${file.name}`);
+                    failed++;
                     continue;
                 }
                 
                 const arrayBuffer = await response.arrayBuffer();
-                const data = new Uint8Array(arrayBuffer);
+                const { courseName, data: studentData } = await processExcelFile(arrayBuffer, file.name);
                 
-                const { courseName, data: studentData } = await processExcelFile(data);
                 if (courseName) {
-                    attendanceData[courseName] = {
-                        ...attendanceData[courseName],
-                        ...studentData
-                    };
+                    if (!attendanceData[courseName]) {
+                        attendanceData[courseName] = {};
+                    }
+                    Object.assign(attendanceData[courseName], studentData);
+                    processed++;
+                    console.log(`Successfully processed: ${courseName}`);
                 }
             } catch (err) {
                 console.error(`Error processing ${file.name}:`, err);
+                failed++;
             }
         }
         
-        console.log('Final processed courses:', Object.keys(attendanceData));
+        console.log(`Processing complete. Success: ${processed}, Failed: ${failed}`);
+        console.log('Courses found:', Object.keys(attendanceData));
+        
         localStorage.setItem('attendanceData', JSON.stringify(attendanceData));
         
     } catch (error) {
@@ -284,7 +307,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const checkBtn = document.getElementById('checkBtn');
     const rollInput = document.getElementById('rollNumber');
 
-    // Load attendance data when page loads
     loadAttendanceData();
 
     if (checkBtn) checkBtn.addEventListener('click', checkAttendance);

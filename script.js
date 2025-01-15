@@ -55,20 +55,9 @@ async function fetchGitHubDirectory() {
     
     try {
         for (const subject of subjects) {
-            // Each subject has its sections in Excel files
-            const fileUrl = `${baseUrl}/${subject}/attendance.xlsx`;
-            try {
-                const response = await fetch(fileUrl);
-                if (response.ok) {
-                    allFiles.push({
-                        name: `${subject}.xlsx`,
-                        path: subject,
-                        download_url: fileUrl
-                    });
-                }
-            } catch (err) {
-                console.error(`Error fetching ${subject}:`, err);
-            }
+            // For example: /DT/A.xlsx, /DT/B.xlsx, etc.
+            const sectionFiles = await getSectionFiles(baseUrl, subject);
+            allFiles = [...allFiles, ...sectionFiles];
         }
         
         console.log(`Found ${allFiles.length} Excel files`);
@@ -77,6 +66,29 @@ async function fetchGitHubDirectory() {
         console.error('Error fetching files:', error);
         return [];
     }
+}
+
+async function getSectionFiles(baseUrl, subject) {
+    const files = [];
+    // Check each section file
+    const sections = subject === 'SDM' ? ['ABCD.xlsx'] : ['A.xlsx', 'B.xlsx', 'C.xlsx', 'D.xlsx', 'E.xlsx', 'F.xlsx', 'G.xlsx', 'H.xlsx'];
+    
+    for (const section of sections) {
+        const fileUrl = `${baseUrl}/${subject}/${section}`;
+        try {
+            const response = await fetch(fileUrl);
+            if (response.ok) {
+                files.push({
+                    name: section,
+                    path: subject,
+                    download_url: fileUrl
+                });
+            }
+        } catch (err) {
+            console.log(`File not found: ${subject}/${section}`);
+        }
+    }
+    return files;
 }
 
 async function loadAttendanceData() {

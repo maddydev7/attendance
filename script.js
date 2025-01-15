@@ -1,4 +1,16 @@
 let attendanceData = {};
+function showLoading() {
+    const resultDiv = document.getElementById('result');
+    resultDiv.innerHTML = `
+        <div class="fixed top-0 left-0 w-full h-full flex justify-center items-center bg-white bg-opacity-90 z-50">
+            <div class="text-center">
+                <div class="animate-spin rounded-full h-16 w-16 border-4 border-blue-500 border-t-transparent mb-4"></div>
+                <p class="text-lg text-gray-700">Loading attendance data...</p>
+                <p class="text-sm text-gray-500" id="loadingStatus"></p>
+            </div>
+        </div>
+    `;
+}
 
 async function processExcelFile(arrayBuffer, fileName) {
     try {
@@ -91,9 +103,9 @@ async function fetchGitHubDirectory() {
 
 async function loadAttendanceData() {
     try {
-        console.log('Starting to fetch files...');
+        showLoading();
+        const statusElement = document.getElementById('loadingStatus');
         const files = await fetchGitHubDirectory();
-        console.log(`Found total ${files.length} Excel files`);
         attendanceData = {};
         
         let processed = 0;
@@ -101,10 +113,9 @@ async function loadAttendanceData() {
         
         for (const file of files) {
             try {
-                console.log(`Processing (${processed + 1}/${files.length}): ${file.path}/${file.name}`);
+                statusElement.textContent = `Processing file ${processed + 1} of ${files.length}`;
                 const response = await fetch(file.download_url);
                 if (!response.ok) {
-                    console.error(`Failed to fetch: ${file.name}`);
                     failed++;
                     continue;
                 }
@@ -118,19 +129,14 @@ async function loadAttendanceData() {
                     }
                     Object.assign(attendanceData[courseName], studentData);
                     processed++;
-                    console.log(`Successfully processed: ${courseName}`);
                 }
             } catch (err) {
-                console.error(`Error processing ${file.name}:`, err);
                 failed++;
             }
         }
         
-        console.log(`Processing complete. Success: ${processed}, Failed: ${failed}`);
-        console.log('Courses found:', Object.keys(attendanceData));
-        
         localStorage.setItem('attendanceData', JSON.stringify(attendanceData));
-        
+        document.getElementById('result').innerHTML = '';
     } catch (error) {
         console.error('Error in loadAttendanceData:', error);
     }

@@ -1,18 +1,18 @@
 // Comment out showLoading function
 
 function showLoading() {
-   const resultDiv = document.getElementById('result');
-   resultDiv.innerHTML = `
-       <div class="fixed inset-0 flex items-center justify-center bg-white bg-opacity-90 z-50">
-           <div class="w-96 text-center p-8">
-               <div class="mb-4 text-lg font-semibold text-gray-700">Loading attendance data...</div>
-               <div class="w-full bg-gray-200 rounded-full h-2.5">
-                   <div class="bg-blue-600 h-2.5 rounded-full transition-all duration-300" id="progressBar" style="width: 0%"></div>
-               </div>
-               <p class="mt-2 text-sm text-gray-600" id="loadingStatus"></p>
-           </div>
-       </div>
-   `;
+    const resultDiv = document.getElementById('result');
+    resultDiv.innerHTML = `
+        <div class="fixed inset-0 flex items-center justify-center bg-white bg-opacity-90 z-50">
+            <div class="w-96 text-center p-8">
+                <div class="mb-4 text-lg font-semibold text-gray-700">Loading attendance data...</div>
+                <div class="w-full bg-gray-200 rounded-full h-2.5">
+                    <div class="bg-blue-600 h-2.5 rounded-full transition-all duration-300" id="progressBar" style="width: 0%"></div>
+                </div>
+                <p class="mt-2 text-sm text-gray-600" id="loadingStatus"></p>
+            </div>
+        </div>
+    `;
 }
 
 async function processExcelFile(arrayBuffer, fileName) {
@@ -106,35 +106,62 @@ async function fetchGitHubDirectory() {
 
 async function loadAttendanceData() {
     try {
+        const cache = localStorage.getItem('attendanceCache');
+        const cacheTime = localStorage.getItem('cacheTime');
+        
+        if (cache && cacheTime && (Date.now() - Number(cacheTime) < 3600000)) {
+            attendanceData = JSON.parse(cache);
+            return;
+        }
+
         showLoading();
-        console.log('Starting to fetch files...');
+        const statusElement = document.getElementById('loadingStatus');
+        const progressBar = document.getElementById('progressBar');
         const files = await fetchGitHubDirectory();
         
-        const statusElement = document.getElementById('loadingStatus');
+        console.log('Starting to fetch files...');
         console.log(`Found total ${files.length} Excel files`);
         attendanceData = {};
-        
         let processed = 0;
-        let failed = 0;
-        
-        for (const file of files) {
+
+        await Promise.all(files.map(async (file) => {
             try {
-                statusElement.textContent = `Processing file ${processed + 1} of ${files.length}`;
-                // Rest of the existing code...
+                console.log(`Processing (${processed + 1}/${files.length}): ${file.path}/${file.name}`);
+                const response = await fetch(file.download_url);
+                if (!response.ok) return;
+                
+                const arrayBuffer = await response.arrayBuffer();
+                const { courseName, data: studentData } = await processExcelFile(arrayBuffer, file.name);
+                
+                if (courseName) {
+                    if (!attendanceData[courseName]) {
+                        attendanceData[courseName] = {};
+                    }
+                    Object.assign(attendanceData[courseName], studentData);
+                    processed++;
+                    
+                    // Update progress
+                    const progress = (processed / files.length) * 100;
+                    progressBar.style.width = `${progress}%`;
+                    statusElement.textContent = `Processing file ${processed} of ${files.length}`;
+                    console.log(`Successfully processed: ${courseName}`);
+                }
             } catch (err) {
-                failed++;
+                console.error(`Error processing ${file.name}:`, err);
             }
-        }
+        }));
+
+        console.log(`Processing complete. Success: ${processed}`);
+        console.log('Courses found:', Object.keys(attendanceData));
+        localStorage.setItem('attendanceCache', JSON.stringify(attendanceData));
+        localStorage.setItem('cacheTime', Date.now().toString());
         
-        // Clear loading at the end
         document.getElementById('result').innerHTML = '';
         
     } catch (error) {
         console.error('Error in loadAttendanceData:', error);
-        document.getElementById('result').innerHTML = '<p class="text-red-500">Error loading data</p>';
     }
 }
-
 function createProgressCircle(containerId, percentage) {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');

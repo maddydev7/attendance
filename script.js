@@ -1,5 +1,5 @@
 // Comment out showLoading function
-/*
+
 function showLoading() {
    const resultDiv = document.getElementById('result');
    resultDiv.innerHTML = `
@@ -14,7 +14,7 @@ function showLoading() {
        </div>
    `;
 }
-*/
+
 async function processExcelFile(arrayBuffer, fileName) {
     try {
         const data = new Uint8Array(arrayBuffer);
@@ -106,49 +106,32 @@ async function fetchGitHubDirectory() {
 
 async function loadAttendanceData() {
     try {
-        const cache = localStorage.getItem('attendanceCache');
-        const cacheTime = localStorage.getItem('cacheTime');
-        
-        if (cache && cacheTime && (Date.now() - Number(cacheTime) < 3600000)) {
-            attendanceData = JSON.parse(cache);
-            return;
-        }
-
+        showLoading();
         console.log('Starting to fetch files...');
         const files = await fetchGitHubDirectory();
+        
+        const statusElement = document.getElementById('loadingStatus');
         console.log(`Found total ${files.length} Excel files`);
         attendanceData = {};
+        
         let processed = 0;
-
-        await Promise.all(files.map(async (file) => {
+        let failed = 0;
+        
+        for (const file of files) {
             try {
-                console.log(`Processing (${processed + 1}/${files.length}): ${file.path}/${file.name}`);
-                const response = await fetch(file.download_url);
-                if (!response.ok) return;
-                
-                const arrayBuffer = await response.arrayBuffer();
-                const { courseName, data: studentData } = await processExcelFile(arrayBuffer, file.name);
-                
-                if (courseName) {
-                    if (!attendanceData[courseName]) {
-                        attendanceData[courseName] = {};
-                    }
-                    Object.assign(attendanceData[courseName], studentData);
-                    processed++;
-                    console.log(`Successfully processed: ${courseName}`);
-                }
+                statusElement.textContent = `Processing file ${processed + 1} of ${files.length}`;
+                // Rest of the existing code...
             } catch (err) {
-                console.error(`Error processing ${file.name}:`, err);
+                failed++;
             }
-        }));
-
-        console.log(`Processing complete. Success: ${processed}`);
-        console.log('Courses found:', Object.keys(attendanceData));
-        localStorage.setItem('attendanceCache', JSON.stringify(attendanceData));
-        localStorage.setItem('cacheTime', Date.now().toString());
+        }
+        
+        // Clear loading at the end
+        document.getElementById('result').innerHTML = '';
         
     } catch (error) {
         console.error('Error in loadAttendanceData:', error);
+        document.getElementById('result').innerHTML = '<p class="text-red-500">Error loading data</p>';
     }
 }
 

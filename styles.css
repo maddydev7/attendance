@@ -472,3 +472,35 @@ body {
     border-radius: 12px;
     border: 1px solid rgba(255, 255, 255, 0.3);
 }
+/* Grid Responsiveness */
+#result {
+    display: grid;
+    gap: 1.5rem;
+    width: 100%;
+    /* Desktop */
+    grid-template-columns: repeat(4, 1fr);
+}
+
+/* Tablet */
+@media (max-width: 1024px) {
+    #result {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .main-container {
+        width: 90%;
+        padding: 0 1rem;
+    }
+}
+
+/* Mobile */
+@media (max-width: 640px) {
+    #result {
+        grid-template-columns: 1fr;
+    }
+    
+    .main-container {
+        width: 95%;
+        padding: 0 0.5rem;
+    }
+}

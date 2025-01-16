@@ -2,14 +2,17 @@ let attendanceData = {};
 function showLoading() {
     const resultDiv = document.getElementById('result');
     resultDiv.innerHTML = `
-        <div class="fixed top-0 left-0 w-full h-full flex justify-center items-center bg-white bg-opacity-90 z-50">
-            <div class="text-center">
-                <div class="animate-spin rounded-full h-16 w-16 border-4 border-blue-500 border-t-transparent mb-4"></div>
-                <p class="text-lg text-gray-700">Loading attendance data...</p>
-                <p class="text-sm text-gray-500" id="loadingStatus"></p>
+        <div class="fixed inset-0 flex items-center justify-center bg-white bg-opacity-90 z-50">
+            <div class="w-96 text-center p-8">
+                <div class="mb-4">Loading attendance data...</div>
+                <div class="w-full bg-gray-200 rounded-full h-2.5">
+                    <div class="bg-blue-600 h-2.5 rounded-full transition-all duration-300" id="progressBar"></div>
+                </div>
+                <p class="mt-2 text-sm text-gray-600" id="loadingStatus"></p>
             </div>
         </div>
     `;
+}
 }
 
 async function processExcelFile(arrayBuffer, fileName) {

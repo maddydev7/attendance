@@ -136,6 +136,7 @@ async function loadAttendanceData() {
 
         console.log(`Processing complete. Success: ${processed}`);
         console.log('Courses found:', Object.keys(attendanceData));
+        localStorage.setItem('attendanceCache', JSON.stringify(attendanceData));  // Add this line
         
     } catch (error) {
         console.error('Error in loadAttendanceData:', error);

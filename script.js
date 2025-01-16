@@ -13,7 +13,6 @@ function showLoading() {
         </div>
     `;
 }
-}
 
 async function processExcelFile(arrayBuffer, fileName) {
     try {

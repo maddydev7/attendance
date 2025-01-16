@@ -191,24 +191,18 @@ function checkAttendance() {
     const resultDiv = document.getElementById('result');
     const studentInfoDiv = document.getElementById('studentInfo');
     
-    const storedData = localStorage.getItem('attendanceCache');  // Changed from attendanceData
-    if (!storedData) {
+    if (!attendanceData || Object.keys(attendanceData).length === 0) {
         resultDiv.innerHTML = '<p class="text-center text-red-500">No attendance data available</p>';
         return;
     }
 
-    const data = JSON.parse(storedData);
-    console.log('Available courses:', Object.keys(data));
-    
     let studentSubjects = [];
     let studentName = '';
     let totalOverallClasses = 0;
     let totalOverallPresent = 0;
 
-    Object.entries(data).forEach(([courseName, courseData]) => {
-        console.log('Checking course:', courseName);
+    Object.entries(attendanceData).forEach(([courseName, courseData]) => {
         if (courseData[rollInput]) {
-            console.log('Found student in course:', courseName);
             studentSubjects.push({
                 courseName: courseName,
                 ...courseData[rollInput]

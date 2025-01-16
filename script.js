@@ -106,20 +106,8 @@ async function fetchGitHubDirectory() {
 
 async function loadAttendanceData() {
     try {
-        const cache = localStorage.getItem('attendanceCache');
-        const cacheTime = localStorage.getItem('cacheTime');
-        
-        if (cache && cacheTime && (Date.now() - Number(cacheTime) < 3600000)) {
-            attendanceData = JSON.parse(cache);
-            return;
-        }
-
-        showLoading();
-        const statusElement = document.getElementById('loadingStatus');
-        const progressBar = document.getElementById('progressBar');
-        const files = await fetchGitHubDirectory();
-        
         console.log('Starting to fetch files...');
+        const files = await fetchGitHubDirectory();
         console.log(`Found total ${files.length} Excel files`);
         attendanceData = {};
         let processed = 0;
@@ -139,11 +127,6 @@ async function loadAttendanceData() {
                     }
                     Object.assign(attendanceData[courseName], studentData);
                     processed++;
-                    
-                    // Update progress
-                    const progress = (processed / files.length) * 100;
-                    progressBar.style.width = `${progress}%`;
-                    statusElement.textContent = `Processing file ${processed} of ${files.length}`;
                     console.log(`Successfully processed: ${courseName}`);
                 }
             } catch (err) {
@@ -153,15 +136,12 @@ async function loadAttendanceData() {
 
         console.log(`Processing complete. Success: ${processed}`);
         console.log('Courses found:', Object.keys(attendanceData));
-        localStorage.setItem('attendanceCache', JSON.stringify(attendanceData));
-        localStorage.setItem('cacheTime', Date.now().toString());
-        
-        document.getElementById('result').innerHTML = '';
         
     } catch (error) {
         console.error('Error in loadAttendanceData:', error);
     }
 }
+
 function createProgressCircle(containerId, percentage) {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
@@ -210,11 +190,8 @@ function checkAttendance() {
     const resultDiv = document.getElementById('result');
     const studentInfoDiv = document.getElementById('studentInfo');
     
-    console.log('Checking roll number:', rollInput);
-    
-    const storedData = localStorage.getItem('attendanceData');
+    const storedData = localStorage.getItem('attendanceCache');  // Changed from attendanceData
     if (!storedData) {
-        console.log('No stored data found');
         resultDiv.innerHTML = '<p class="text-center text-red-500">No attendance data available</p>';
         return;
     }

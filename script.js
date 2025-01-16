@@ -1,12 +1,11 @@
-let attendanceData = {};
 function showLoading() {
     const resultDiv = document.getElementById('result');
     resultDiv.innerHTML = `
         <div class="fixed inset-0 flex items-center justify-center bg-white bg-opacity-90 z-50">
             <div class="w-96 text-center p-8">
-                <div class="mb-4">Loading attendance data...</div>
+                <div class="mb-4 text-lg font-semibold text-gray-700">Loading attendance data...</div>
                 <div class="w-full bg-gray-200 rounded-full h-2.5">
-                    <div class="bg-blue-600 h-2.5 rounded-full transition-all duration-300" id="progressBar"></div>
+                    <div class="bg-blue-600 h-2.5 rounded-full transition-all duration-300" id="progressBar" style="width: 0%"></div>
                 </div>
                 <p class="mt-2 text-sm text-gray-600" id="loadingStatus"></p>
             </div>
@@ -105,22 +104,28 @@ async function fetchGitHubDirectory() {
 
 async function loadAttendanceData() {
     try {
+        // Check cache
+        const cache = localStorage.getItem('attendanceCache');
+        const cacheTime = localStorage.getItem('cacheTime');
+        
+        if (cache && cacheTime && (Date.now() - Number(cacheTime) < 3600000)) {
+            attendanceData = JSON.parse(cache);
+            return;
+        }
+
         showLoading();
         const statusElement = document.getElementById('loadingStatus');
+        const progressBar = document.getElementById('progressBar');
         const files = await fetchGitHubDirectory();
+        
         attendanceData = {};
-        
         let processed = 0;
-        let failed = 0;
-        
-        for (const file of files) {
+
+        // Process files in parallel with progress updates
+        await Promise.all(files.map(async (file) => {
             try {
-                statusElement.textContent = `Processing file ${processed + 1} of ${files.length}`;
                 const response = await fetch(file.download_url);
-                if (!response.ok) {
-                    failed++;
-                    continue;
-                }
+                if (!response.ok) return;
                 
                 const arrayBuffer = await response.arrayBuffer();
                 const { courseName, data: studentData } = await processExcelFile(arrayBuffer, file.name);
@@ -130,14 +135,21 @@ async function loadAttendanceData() {
                         attendanceData[courseName] = {};
                     }
                     Object.assign(attendanceData[courseName], studentData);
-                    processed++;
                 }
+                
+                processed++;
+                const progress = (processed / files.length) * 100;
+                progressBar.style.width = `${progress}%`;
+                statusElement.textContent = `Processing file ${processed} of ${files.length}`;
             } catch (err) {
-                failed++;
+                console.error(`Error processing ${file.name}:`, err);
             }
-        }
+        }));
+
+        // Update cache
+        localStorage.setItem('attendanceCache', JSON.stringify(attendanceData));
+        localStorage.setItem('cacheTime', Date.now().toString());
         
-        localStorage.setItem('attendanceData', JSON.stringify(attendanceData));
         document.getElementById('result').innerHTML = '';
     } catch (error) {
         console.error('Error in loadAttendanceData:', error);

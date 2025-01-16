@@ -1,16 +1,21 @@
+// Comment out showLoading function
+/*
 function showLoading() {
-    const resultDiv = document.getElementById('result');
-    resultDiv.innerHTML = `
-        <div class="fixed inset-0 flex items-center justify-center bg-white bg-opacity-90 z-50">
-            <div class="w-96 text-center p-8">
-                <div class="mb-4 text-lg font-semibold text-gray-700">Loading attendance data...</div>
-                <div class="w-full bg-gray-200 rounded-full h-2.5">
-                    <div class="bg-blue-600 h-2.5 rounded-full transition-all duration-300" id="progressBar" style="width: 0%"></div>
-                </div>
-                <p class="mt-2 text-sm text-gray-600" id="loadingStatus"></p>
-            </div>
-        </div>
-    `;
+   const resultDiv = document.getElementById('result');
+   resultDiv.innerHTML = `
+       <div class="fixed inset-0 flex items-center justify-center bg-white bg-opacity-90 z-50">
+           <div class="w-96 text-center p-8">
+               <div class="mb-4 text-lg font-semibold text-gray-700">Loading attendance data...</div>
+               <div class="w-full bg-gray-200 rounded-full h-2.5">
+                   <div class="bg-blue-600 h-2.5 rounded-full transition-all duration-300" id="progressBar" style="width: 0%"></div>
+               </div>
+               <p class="mt-2 text-sm text-gray-600" id="loadingStatus"></p>
+           </div>
+       </div>
+   `;
+}
+*/
+;
 }
 
 async function processExcelFile(arrayBuffer, fileName) {
@@ -104,7 +109,6 @@ async function fetchGitHubDirectory() {
 
 async function loadAttendanceData() {
     try {
-        // Check cache
         const cache = localStorage.getItem('attendanceCache');
         const cacheTime = localStorage.getItem('cacheTime');
         
@@ -112,16 +116,10 @@ async function loadAttendanceData() {
             attendanceData = JSON.parse(cache);
             return;
         }
-
-        showLoading();
-        const statusElement = document.getElementById('loadingStatus');
-        const progressBar = document.getElementById('progressBar');
+ 
         const files = await fetchGitHubDirectory();
-        
         attendanceData = {};
-        let processed = 0;
-
-        // Process files in parallel with progress updates
+ 
         await Promise.all(files.map(async (file) => {
             try {
                 const response = await fetch(file.download_url);
@@ -136,25 +134,18 @@ async function loadAttendanceData() {
                     }
                     Object.assign(attendanceData[courseName], studentData);
                 }
-                
-                processed++;
-                const progress = (processed / files.length) * 100;
-                progressBar.style.width = `${progress}%`;
-                statusElement.textContent = `Processing file ${processed} of ${files.length}`;
             } catch (err) {
                 console.error(`Error processing ${file.name}:`, err);
             }
         }));
-
-        // Update cache
+ 
         localStorage.setItem('attendanceCache', JSON.stringify(attendanceData));
         localStorage.setItem('cacheTime', Date.now().toString());
         
-        document.getElementById('result').innerHTML = '';
     } catch (error) {
         console.error('Error in loadAttendanceData:', error);
     }
-}
+ }
 
 function createProgressCircle(containerId, percentage) {
     const canvas = document.createElement('canvas');

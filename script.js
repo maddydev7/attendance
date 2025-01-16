@@ -1,19 +1,4 @@
-// Comment out showLoading function
-
-function showLoading() {
-    const resultDiv = document.getElementById('result');
-    resultDiv.innerHTML = `
-        <div class="fixed inset-0 flex items-center justify-center bg-white bg-opacity-90 z-50">
-            <div class="w-96 text-center p-8">
-                <div class="mb-4 text-lg font-semibold text-gray-700">Loading attendance data...</div>
-                <div class="w-full bg-gray-200 rounded-full h-2.5">
-                    <div class="bg-blue-600 h-2.5 rounded-full transition-all duration-300" id="progressBar" style="width: 0%"></div>
-                </div>
-                <p class="mt-2 text-sm text-gray-600" id="loadingStatus"></p>
-            </div>
-        </div>
-    `;
-}
+let attendanceData = {};
 
 async function processExcelFile(arrayBuffer, fileName) {
     try {
@@ -136,7 +121,6 @@ async function loadAttendanceData() {
 
         console.log(`Processing complete. Success: ${processed}`);
         console.log('Courses found:', Object.keys(attendanceData));
-        localStorage.setItem('attendanceCache', JSON.stringify(attendanceData));  // Add this line
         
     } catch (error) {
         console.error('Error in loadAttendanceData:', error);
@@ -202,7 +186,9 @@ function checkAttendance() {
     let totalOverallPresent = 0;
 
     Object.entries(attendanceData).forEach(([courseName, courseData]) => {
+        console.log('Checking course:', courseName);
         if (courseData[rollInput]) {
+            console.log('Found student in course:', courseName);
             studentSubjects.push({
                 courseName: courseName,
                 ...courseData[rollInput]
@@ -214,8 +200,6 @@ function checkAttendance() {
             totalOverallPresent += courseData[rollInput].totalPresent;
         }
     });
-
-    console.log('Found subjects:', studentSubjects.length);
 
     if (studentSubjects.length === 0) {
         resultDiv.innerHTML = '<p class="text-center text-red-500">Roll number not found</p>';

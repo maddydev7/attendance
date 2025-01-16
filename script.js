@@ -15,8 +15,6 @@ function showLoading() {
    `;
 }
 */
-;
-}
 
 async function processExcelFile(arrayBuffer, fileName) {
     try {

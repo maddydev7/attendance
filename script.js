@@ -200,7 +200,7 @@ async function fetchGitHubDirectory() {
         ]
     };
 
-    const baseUrl = 'https://raw.githubusercontent.com/iimindore/attendance-system/main/attendance-files'; // Make sure this base URL is correct for your repo
+    const baseUrl = 'https://raw.githubusercontent.com/maddydev7/attendance-system/main/attendance-files'; // Make sure this base URL is correct for your repo
     let allFiles = [];
 
     for (const [subject, files] of Object.entries(fileStructure)) {

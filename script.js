@@ -228,7 +228,7 @@ async function loadAttendanceData() {
         await Promise.all(files.map(async (file) => {
             try {
                 console.log(`Processing (${processed + 1}/${files.length}): ${file.path}/${file.name}`);
-                const response = await fetch(file.download_url);
+                const response = await fetch(file.download_url, { cache: 'no-store' });
                 if (!response.ok) {
                     console.error(`Failed to fetch ${file.download_url}: ${response.statusText}`);
                     return;

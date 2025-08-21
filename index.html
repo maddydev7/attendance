@@ -8,7 +8,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="styles.css?v=1.2">
+    <link rel="stylesheet" href="styles.css">
+    
+    <!-- Anti-Caching Headers -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -32,6 +34,19 @@
         <div id="result" class="grid grid-cols-4 gap-6"></div>
     </div>
 
-    <script src="script.js?v=1.2"></script>
+    <!-- === DISCLAIMER ADDED HERE === -->
+    <footer class="text-center py-8">
+        <p class="text-sm text-gray-500">
+            This is a personal project. If you find any discrepancy, please refer to the 
+            <a href="https://drive.google.com/drive/folders/1XP-GJjWILwsrokmpF-1mM-c-g3P3xg6p?usp=drive_link" 
+               target="_blank" rel="noopener noreferrer" 
+               class="text-blue-600 hover:underline">
+                official attendance sheets
+            </a>.
+        </p>
+    </footer>
+    <!-- ============================= -->
+
+    <script src="script.js"></script>
 </body>
 </html>
